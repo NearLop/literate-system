@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated Campus Systems Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Load Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.latest/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --card-bg: #1e1e1e;
+            --accent-blue: #4f46e5; /* Indigo-600 */
+            --text-light: #e5e7eb;
+            --success-flash: #10b981; /* Emerald-500 */
+            --error-flash: #ef4444; /* Red-500 */
+            --warning-flash: #f59e0b; /* Amber-500 */
+            --master-update: #3b82f6; /* Blue-500 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+        }
+        .dashboard-card {
+            background-color: var(--card-bg);
+            border: 1px solid #2d2d2d;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .dashboard-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.4);
+        }
+        /* Custom status dot for visibility */
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-up { background-color: #10b981; } /* Emerald-500 */
+        .status-down { background-color: #ef4444; } /* Red-500 */
+        .status-syncing { background-color: #f59e0b; } /* Amber-500 */
+        
+        /* Flash animation classes */
+        .flash-border-success {
+            border-color: var(--success-flash) !important;
+            box-shadow: 0 0 15px 3px var(--success-flash) !important;
+            transition: border-color 0s, box-shadow 0s;
+        }
+        .flash-border-error {
+            border-color: var(--error-flash) !important;
+            box-shadow: 0 0 15px 3px var(--error-flash) !important;
+            transition: border-color 0s, box-shadow 0s;
+        }
+        .flash-border-warning {
+            border-color: var(--warning-flash) !important;
+            box-shadow: 0 0 15px 3px var(--warning-flash) !important;
+            transition: border-color 0s, box-shadow 0s;
+        }
+        .flash-border-nav {
+            border-color: var(--accent-blue) !important;
+            box-shadow: 0 0 15px 3px var(--accent-blue) !important;
+            transition: border-color 0s, box-shadow 0s;
+        }
+        .flash-border-master {
+            border-color: var(--master-update) !important;
+            box-shadow: 0 0 15px 3px var(--master-update) !important;
+            transition: border-color 0s, box-shadow 0s;
+        }
+        
+        /* Input Red Styling for Balance */
+        .input-error-style {
+            border-color: #f87171 !important; /* Red-400 */
+            color: #fca5a5 !important; /* Red-300 */
+            box-shadow: 0 0 5px rgba(248, 113, 113, 0.5);
+        }
+        .input-warning-style {
+            border-color: #fbbf24 !important; /* Amber-400 */
+            color: #fcd34d !important; /* Amber-300 */
+            box-shadow: 0 0 5px rgba(251, 191, 36, 0.5);
+        }
+        .input-error-style:focus, .input-warning-style:focus {
+            ring-color: #ef4444 !important; /* Red-500 */
+            border-color: #ef4444 !important; /* Red-500 */
+        }
+        
+        /* Activity Timeline Specific Style */
+        .activity-item {
+            display: flex;
+            align-items: center;
+            border-left: 2px solid #374151; /* Slate-700 */
+            padding-left: 1rem;
+            position: relative;
+        }
+        .activity-item::before {
+            content: '';
+            position: absolute;
+            left: -7px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: #1e1e1e; /* Card BG */
+            border: 3px solid #4f46e5; /* Accent Blue */
+        }
+        .activity-item.green::before { border-color: #10b981; } /* Emerald */
+        .activity-item.red::before { border-color: #ef4444; } /* Red */
+        .activity-item.yellow::before { border-color: #f59e0b; } /* Amber */
+        .activity-item.blue::before { border-color: #3b82f6; } /* Blue */
+        .activity-item.purple::before { border-color: #a855f7; } /* Purple */
+        .activity-item.orange::before { border-color: #f97316; } /* Orange */
+
+        
+        .activity-list-container {
+            max-height: 400px; /* Limit height for scrolling */
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+
+    <!-- Dashboard Header -->
+    <header class="max-w-6xl mx-auto mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+                Integrated Campus <span class="text-indigo-400">System Monitor</span>
+            </h1>
+            <div class="mt-3 sm:mt-0 text-right">
+                <p class="text-sm text-slate-400">Current User: <span id="current-user-display" class="font-bold text-white">Administrator (SIS/Billing)</span></p>
+                <p id="current-time" class="text-xs text-slate-500"></p>
+            </div>
+        </div>
+        <p class="text-slate-400 mt-2">Real-time status and core integration metrics across the campus ecosystem.</p>
+    </header>
+
+    <!-- USER STATUS LOOKUP PANEL -->
+    <div id="lookup-panel" class="max-w-6xl mx-auto mb-10 p-4 sm:p-6 rounded-xl bg-slate-800 border-2 border-slate-700 transition-all duration-300 ease-in-out">
+        <h2 class="text-xl font-bold mb-3 text-white flex items-center">
+            <i class="fas fa-search text-indigo-400 mr-2"></i> User Status & Clearance Lookup
+        </h2>
+        <div class="flex flex-col md:flex-row gap-3 items-end">
+            <div class="flex-grow w-full">
+                <label for="user-id-input" class="block text-sm font-medium text-slate-400">Enter Student/Employee ID (e.g., S67897 for overdue, S12345 for partial)</label>
+                <input type="text" id="user-id-input" placeholder="ID or Staff Number" class="mt-1 block w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition duration-300" required>
+            </div>
+            <button id="lookup-button" onclick="lookupUser()" class="w-full md:w-auto flex-shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                <i class="fas fa-arrow-right-to-bracket mr-2"></i> Look Up Status
+            </button>
+        </div>
+
+        <!-- SINGLE BUTTON FOR QUICK LOOKUP (Updated to cycle through all three examples) -->
+        <div class="mt-3">
+            <button onclick="singleQuickLookup()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 shadow-md flex items-center justify-center">
+                <i class="fas fa-random mr-2"></i> Quick Lookup: Cycle Student/Staff (S67897 / S12345 / E9876)
+            </button>
+        </div>
+        
+        <!-- Lookup Result Area -->
+        <div class="flex flex-col sm:flex-row items-center justify-between mt-4 p-3 bg-slate-900 rounded-lg text-sm border border-slate-700 min-h-[40px]">
+            <p id="lookup-result" class="text-slate-400 italic flex-grow">Enter an ID to check real-time access status across all integrated systems.</p>
+            <button id="view-portal-button" onclick="openPortalView()" class="hidden mt-2 sm:mt-0 sm:ml-4 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-1 px-3 rounded-md text-xs transition duration-150">
+                <i class="fas fa-external-link-alt mr-1"></i> View Portal
+            </button>
+        </div>
+    </div>
+    <!-- END USER STATUS LOOKUP PANEL -->
+
+
+    <!-- Main Content Grid -->
+    <main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- CORE SYSTEMS (SIS & FINANCIAL) - 4 Columns Wide on Desktop -->
+        <section class="lg:col-span-4 space-y-6">
+            <h2 class="text-xl font-semibold text-indigo-400 border-b border-slate-700 pb-2">Core Data Engines</h2>
+            
+            <!-- MASTER UPDATE BUTTON -->
+            <button id="master-update-button" onclick="triggerAllSystemUpdate()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition duration-150 shadow-lg flex items-center justify-center">
+                <i class="fas fa-sync-alt mr-3"></i> MASTER SYSTEM SYNC (Update All)
+            </button>
+
+            <!-- SIS Card -->
+            <div id="sis-card" class="dashboard-card p-6 rounded-xl" onclick="navigateToSystem('Student Information System (SIS)')">
+                <div class="flex justify-between items-start">
+                    <i class="fas fa-user-graduate text-3xl text-indigo-400"></i>
+                    <span id="sis-status-text" class="text-sm font-medium text-green-400 flex items-center">
+                        <span id="sis-status-dot" class="status-dot status-up"></span> Operational
+                    </span>
+                </div>
+                <h3 class="text-2xl font-bold mt-3 mb-1">Student Information System (SIS)</h3>
+                <p class="text-sm text-slate-400 mb-4">Master record control. Enrollment and demographic source.</p>
+                <div class="space-y-1 text-sm">
+                    <p>Total Enrolled Students: <span id="sis-enrolled" class="font-bold text-indigo-300">15,400</span></p>
+                    <p>Sync Target: <span class="font-bold text-indigo-300">6 Systems</span></p>
+                    <p>Pending Registrations: <span id="sis-pending" class="font-bold text-yellow-300">30 Students / 5 Staff</span></p>
+                </div>
+            </div>
+
+            <!-- Financial Aid & Billing Card (Updated) -->
+            <div id="financial-card" class="dashboard-card p-6 rounded-xl" onclick="void(0)">
+                <div class="flex justify-between items-start">
+                    <i class="fas fa-peso-sign text-3xl text-emerald-400"></i>
+                    <span id="financial-status-text" class="text-sm font-medium text-amber-400 flex items-center">
+                        <span id="financial-status-dot" class="status-dot status-syncing"></span> Billing Sync
+                    </span>
+                </div>
+                <h3 class="text-2xl font-bold mt-3 mb-1">Financial Aid & Billing</h3>
+                <p class="text-sm text-slate-400 mb-4">Tuition, aid processing, and account ledger management.</p>
+                <div class="space-y-1 text-sm">
+                    <p>Current Tuition: <span id="tuition-balance" class="font-bold text-emerald-300">₱0.00</span></p>
+                    <p>Last Transaction: <span id="last-transaction" class="font-bold text-emerald-300">SIS Update (5m ago)</span></p>
+                </div>
+                
+                <!-- NEW: Pay Bill Feature -->
+                <div class="mt-4 pt-4 border-t border-slate-700">
+                    <button id="pay-bill-button" onclick="handlePayBill()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 disabled:bg-red-900 disabled:text-red-400" disabled>
+                        <i class="fas fa-money-bill-transfer mr-2"></i> Clear Outstanding Balance
+                    </button>
+                    <p id="bill-feedback" class="text-xs mt-1 text-slate-400 italic">Bill payment enabled only for users with due balance.</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- SERVICES & ACCESS SYSTEMS - 4 Columns Wide on Desktop -->
+        <section class="lg:col-span-4 space-y-6">
+            <h2 class="text-xl font-semibold text-yellow-400 border-b border-slate-700 pb-2">Service & Access Controls</h2>
+            
+            <!-- LMS Card -->
+            <div id="lms-card" class="dashboard-card p-6 rounded-xl" onclick="navigateToSystem('LMS (Course Access)')">
+                <div class="flex justify-between items-start">
+                    <i class="fas fa-book-open text-3xl text-yellow-400"></i>
+                    <span id="lms-status-text" class="text-sm font-medium text-green-400 flex items-center">
+                        <span id="lms-status-dot" class="status-dot status-up"></span> Online
+                    </span>
+                </div>
+                <h3 class="text-xl font-bold mt-3 mb-1">LMS (Course Access)</h3>
+                <p class="text-sm text-slate-400 mb-4">Enrollment-based course restriction/granting.</p>
+                <div class="space-y-1 text-sm">
+                    <p>Access Blocks: <span id="lms-blocks" class="font-bold text-red-400">15 students</span></p>
+                    <p>Next Sync: <span id="lms-next-sync" class="font-bold text-yellow-300">Hourly</span></p>
+                </div>
+            </div>
+
+            <!-- Library Card -->
+            <div id="library-card" class="dashboard-card p-6 rounded-xl" onclick="navigateToSystem('Library Management')">
+                <div class="flex justify-between items-start">
+                    <i class="fas fa-landmark text-3xl text-purple-400"></i>
+                    <span id="library-status-text" class="text-sm font-medium text-green-400 flex items-center">
+                        <span id="library-status-dot" class="status-dot status-up"></span> Online
+                    </span>
+                </div>
+                <h3 class="text-xl font-bold mt-3 mb-1">Library Management</h3>
+                <p class="text-sm text-slate-400 mb-4">Validates status before borrowing privileges are granted.</p>
+                <div class="space-y-1 text-sm">
+                    <p>Privileges Blocked: <span id="library-blocked" class="font-bold text-red-400">187 due to fines</span></p>
+                    <p>API Latency: <span id="library-latency" class="font-bold text-purple-300">50ms</span></p>
+                </div>
+            </div>
+
+            <!-- Security & Access Card -->
+            <div id="security-card" class="dashboard-card p-6 rounded-xl" onclick="navigateToSystem('Security & Access')">
+                <div class="flex justify-between items-start">
+                    <i class="fas fa-shield-alt text-3xl text-red-400"></i>
+                    <span id="security-status-text" class="text-sm font-medium text-green-400 flex items-center">
+                        <span id="security-status-dot" class="status-dot status-up"></span> Locked Down
+                    </span>
+                </div>
+                <h3 class="text-xl font-bold mt-3 mb-1">Security & Access</h3>
+                <p class="text-sm text-slate-400 mb-4">Physical and digital campus entry control.</p>
+                <div class="space-y-1 text-sm">
+                    <p>Active Credentials: <span id="security-active" class="font-bold text-red-300">15,400</span></p>
+                    <p>Last Sync: <span id="security-last-sync" class="font-bold text-red-300">Real-time</span></p>
+                </div>
+            </div>
+
+            <!-- Dining Card (Updated with POS Input) -->
+            <div id="dining-card" class="dashboard-card p-6 rounded-xl" onclick="void(0)">
+                <div class="flex justify-between items-start">
+                    <i class="fas fa-utensils text-3xl text-orange-400"></i>
+                    <span id="dining-status-text" class="text-sm font-medium text-green-400 flex items-center">
+                        <span id="dining-status-dot" class="status-dot status-up"></span> Active
+                    </span>
+                </div>
+                <h3 class="text-xl font-bold mt-3 mb-1">Dining / Cafeteria</h3>
+                <p class="text-sm text-slate-400 mb-4">Meal plan deduction and instant Billing System updates.</p>
+                <div class="space-y-1 text-sm">
+                    <p>Daily Transactions: <span id="dining-transactions" class="font-bold text-orange-300">3,120</span></p>
+                    <p class="mb-3">Billing API Calls: <span id="dining-api" class="font-bold text-orange-300">100% success</span></p>
+                </div>
+
+                <!-- NEW: Dining Transaction Input -->
+                <div class="mt-4 pt-4 border-t border-slate-700">
+                    <h4 class="text-white text-md font-semibold mb-2 flex items-center">
+                        <i class="fas fa-cash-register mr-2 text-orange-400"></i> Simulate Point-of-Sale
+                    </h4>
+                    <div class="flex gap-2">
+                        <input type="number" id="dining-amount-input" placeholder="₱ Amount (e.g., 150)" value="150" class="w-2/3 px-3 py-1 bg-slate-900 border border-slate-700 rounded-md text-white text-sm focus:ring-orange-500 focus:border-orange-500">
+                        <button id="dining-sale-button" onclick="handleDiningSale()" class="w-1/3 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-1 rounded-md text-sm transition duration-150 disabled:bg-slate-700 disabled:text-slate-400" disabled>
+                            Sale
+                        </button>
+                    </div>
+                    <p id="dining-feedback" class="text-xs mt-1 text-slate-400 italic">Load a user to enable transaction.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- USER ACTIVITY TIMELINE - 4 Columns Wide on Desktop (Repurposed from Data Warehouse) -->
+        <section class="lg:col-span-4 space-y-6">
+            <h2 class="text-xl font-semibold text-pink-400 border-b border-slate-700 pb-2 flex items-center">
+                 <i class="fas fa-history mr-2"></i> User Activity Timeline
+            </h2>
+            
+            <!-- Activity Timeline Card -->
+            <div id="activity-timeline-card" class="dashboard-card p-6 rounded-xl h-full cursor-default" onclick="void(0)">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-xl font-bold">Recent System Events</h3>
+                    <span id="timeline-id-display" class="text-sm font-medium text-slate-400 italic">No User Selected</span>
+                </div>
+                <p class="text-sm text-slate-400 mb-4">Detailed log of transactions, access, and enrollment status.</p>
+                
+                <div id="timeline-placeholder" class="text-center text-slate-500 py-10">
+                    <i class="fas fa-search text-3xl mb-3 text-slate-600"></i>
+                    <p>Enter an ID above to load activity.</p>
+                </div>
+                
+                <div id="activity-list-container" class="activity-list-container">
+                    <ul id="activity-list" class="space-y-4">
+                        <!-- Activities will be injected here -->
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Small Data Warehouse Summary -->
+            <div class="p-4 bg-slate-800 rounded-xl border border-slate-700 text-sm">
+                 <h4 class="text-lg font-bold text-blue-400 mb-2">Data Summary (Campus-wide)</h4>
+                 <p>Total Data Records: <span id="warehouse-records" class="font-bold text-blue-300">9.8 Million</span></p>
+                 <p>Reports Generated (24h): <span id="warehouse-reports" class="font-bold text-blue-300">84</span></p>
+            </div>
+        </section>
+    </main>
+
+    <!-- USER PORTAL MODAL (Simulated New Window) -->
+    <div id="portal-modal" class="portal-modal p-4 sm:p-8">
+        <div id="portal-content" class="max-w-7xl mx-auto rounded-lg shadow-2xl bg-slate-900 min-h-full">
+            <!-- Content will be injected here by JavaScript -->
+        </div>
+    </div>
+    <!-- END USER PORTAL MODAL -->
+    
+    <!-- Footer and Scripts -->
+    <script>
+        // Global store for the last successful lookup (for modal view)
+        let lastLookupData = {}; 
+        // State to cycle through Quick Lookup
+        let quickLookupIndex = 0; 
+        const QUICK_LOOKUP_IDS = ['S67897', 'S12345', 'E9876'];
+        
+        // CONSTANTS FOR SCENARIO DEFINITION
+        const PARTIAL_PAYMENT_ID = 'S12345';
+        const OVERDUE_ID = 'S67897';
+
+        // NEW: Mutable store for the currently loaded user's balance and custom activities
+        let currentActiveUser = {
+            userId: null,
+            isStudent: false,
+            balance: 0.00, // Stored as a number for calculation
+            customActivities: [] // New transactions (dining, payment) will be added here
+        };
+
+        // Utility function for time update
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('en-US', {
+                hour: 'numeric',
+                minute: 'numeric',
+                second: 'numeric',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour12: true
+            });
+            document.getElementById('current-time').textContent = 'Last Updated: ' + timeString;
+        }
+
+        // Helper function to create a simple, repeatable seed from the ID
+        const getSeed = (id) => {
+            let sum = 0;
+            for (let i = 0; i < id.length; i++) {
+                sum += id.charCodeAt(i);
+            }
+            return sum;
+        };
+        
+        // Function to generate unique, ID-specific transaction details
+        function generateUniqueTransaction(userId) {
+            const seed = getSeed(userId);
+            const transactionTypes = [
+                "Cafeteria Lunch", "Library Fine Payment", "Student Union Kiosk", 
+                "Gym Day Pass", "Bookstore Purchase", "Parking Permit Fee"
+            ];
+            
+            // Amount calculation: Ensures variance between ₱50.00 and ₱149.99, but is consistent for the same ID
+            const rawAmount = (seed % 100) + 50;
+            const decimal = (seed % 100) / 100; 
+            const amount = rawAmount + decimal;
+
+            const transactionText = transactionTypes[seed % transactionTypes.length];
+            
+            // Time difference (minutes ago): 1 to 30 minutes ago
+            const minutesAgo = (seed % 30) + 1;
+            
+            return {
+                amount: `₱${amount.toFixed(2)}`, 
+                text: `${transactionText} (${minutesAgo}m ago)`
+            };
+        }
+
+        // --- NEW: TRANSACTION HANDLERS ---
+
+        // Function to check and update the state of the Pay Bill button
+        function checkPayBillButtonState() {
+            const payBillButton = document.getElementById('pay-bill-button');
+            const billFeedback = document.getElementById('bill-feedback');
+            
+            if (currentActiveUser.userId && currentActiveUser.isStudent && currentActiveUser.balance > 0) {
+                payBillButton.disabled = false;
+                payBillButton.classList.remove('disabled:bg-red-900', 'disabled:text-red-400');
+                // Format the balance with commas for display
+                const formattedBalance = currentActiveUser.balance.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                billFeedback.textContent = `Outstanding Balance: ₱${formattedBalance}. Click to clear.`;
+            } else {
+                payBillButton.disabled = true;
+                payBillButton.classList.add('disabled:bg-red-900', 'disabled:text-red-400');
+                if (currentActiveUser.userId && currentActiveUser.isStudent) {
+                    billFeedback.textContent = "Account cleared! No outstanding balance.";
+                } else {
+                    billFeedback.textContent = "Bill payment enabled only for users with due balance.";
+                }
+            }
+        }
+
+        // Function to handle Dining Sale Transaction
+        function handleDiningSale() {
+            if (!currentActiveUser.userId || !currentActiveUser.isStudent) {
+                document.getElementById('dining-feedback').textContent = "Error: Only active students can incur charges.";
+                return;
+            }
+
+            const input = document.getElementById('dining-amount-input');
+            const amount = parseFloat(input.value);
+            const feedback = document.getElementById('dining-feedback');
+
+            if (isNaN(amount) || amount <= 0) {
+                feedback.textContent = "Please enter a valid amount (e.g., 150.00).";
+                flashCard('dining-card', 'error');
+                return;
+            }
+
+            // 1. Update Balance and determine transaction type
+            let transactionType;
+            currentActiveUser.balance += amount; // Always adds to the numeric balance
+            
+            // Update lastLookupData for display formatting
+            lastLookupData.balance = `₱${currentActiveUser.balance.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+            
+            if (currentActiveUser.balance > 0) {
+                transactionType = 'ADD_CHARGE';
+            } else {
+                transactionType = 'DEDUCT_MEAL'; // Hypothetical deduction, keeping numeric balance at 0 if it was 0
+            }
+
+            // 2. Create the new activity object
+            const newActivity = {
+                system: 'Dining',
+                description: `POS Sale: Cafeteria Purchase of ₱${amount.toFixed(2)}`,
+                icon: 'fas fa-cash-register',
+                color: currentActiveUser.balance > 0 ? 'red' : 'green', // Red if it contributes to debt
+                baseMinutesAgo: 0, 
+                amount: amount,
+                type: transactionType
+            };
+
+            // 3. Add to custom activities and re-render timeline
+            currentActiveUser.customActivities.unshift(newActivity);
+            updateTimeline(currentActiveUser.userId, currentActiveUser.isStudent);
+
+            // 4. Update UI statuses
+            document.getElementById('tuition-balance').textContent = lastLookupData.balance;
+            document.getElementById('last-transaction').textContent = newActivity.description;
+            
+            let dailyTxns = parseInt(document.getElementById('dining-transactions').textContent.replace(/,/g, ''));
+            document.getElementById('dining-transactions').textContent = (dailyTxns + 1).toLocaleString();
+            
+            feedback.textContent = `Sale of ₱${amount.toFixed(2)} processed for ${currentActiveUser.userId}.`;
+            flashCard('dining-card', 'success');
+            
+            if (currentActiveUser.balance > 0) {
+                flashCard('financial-card', currentActiveUser.userId === OVERDUE_ID ? 'error' : 'warning');
+            } else {
+                flashCard('financial-card', 'success');
+            }
+            
+            checkPayBillButtonState(); // Update Pay Bill button status
+            lookupUser(false); // Re-run lookup to refresh status message and input styles
+        }
+
+        // Function to handle Pay Bill Transaction
+        function handlePayBill() {
+            if (!currentActiveUser.userId || !currentActiveUser.isStudent || currentActiveUser.balance <= 0) {
+                document.getElementById('bill-feedback').textContent = "Account already cleared! No outstanding balance.";
+                flashCard('financial-card', 'success');
+                return;
+            }
+
+            const amountPaid = currentActiveUser.balance;
+
+            // 1. Clear the balance
+            currentActiveUser.balance = 0.00;
+            lastLookupData.balance = '₱0.00';
+
+            // 2. Create new payment activity
+            const newActivity = {
+                system: 'Financial',
+                description: `Full Payment Received (₱${amountPaid.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")})`,
+                icon: 'fas fa-check-double',
+                color: 'green',
+                baseMinutesAgo: 0, 
+                amount: amountPaid,
+                type: 'PAYMENT'
+            };
+            
+            // 3. Add to custom activities and re-render timeline
+            currentActiveUser.customActivities.unshift(newActivity);
+            updateTimeline(currentActiveUser.userId, currentActiveUser.isStudent);
+            
+            // 4. Update UI statuses
+            document.getElementById('tuition-balance').textContent = lastLookupData.balance;
+            document.getElementById('last-transaction').textContent = `Payment posted: ₱${amountPaid.toFixed(2)} posted.`;
+            
+            document.getElementById('bill-feedback').textContent = "Balance cleared. Access restored across all systems.";
+            
+            // 5. Disable button and update UI style
+            checkPayBillButtonState();
+            
+            // 6. Flash Cards (Success)
+            flashCard('financial-card', 'success');
+            flashCard('activity-timeline-card', 'success');
+            
+            // Rerun lookup to refresh status message and styles (especially input field)
+            lookupUser(false); 
+        }
+
+        // --- END: TRANSACTION HANDLERS ---
+
+
+        // Function to update the timeline, combining base data and real-time custom activities
+        function updateTimeline(userId, isStudent) {
+            const seed = getSeed(userId);
+            
+            // --- 1. Generate Base Timeline Data (Static Events) ---
+            let timelineData = [
+                {
+                    system: 'Attendance',
+                    description: isStudent ? 'Checked In for CS 301 - Algorithms Class' : 'Checked In: Department Meeting (Confirmed)',
+                    icon: 'fas fa-clipboard-check',
+                    color: 'green',
+                    baseMinutesAgo: 5 + (seed % 3),
+                    type: 'BASE'
+                },
+                {
+                    system: isStudent ? 'LMS' : 'SIS', 
+                    description: isStudent ? 'Successfully logged in to Course Portal' : 'Posted final grades for CS401',
+                    icon: 'fas fa-book-open',
+                    color: 'yellow',
+                    baseMinutesAgo: 10 + (seed % 5),
+                    type: 'BASE'
+                },
+                {
+                    system: 'Security Access', 
+                    description: isStudent ? 'Swiped In: Main Library Gate' : 'Swiped In: Faculty Parking Lot',
+                    icon: 'fas fa-door-open',
+                    color: 'blue',
+                    baseMinutesAgo: 15 + (seed % 5),
+                    type: 'BASE'
+                },
+                {
+                    system: 'Dining', 
+                    description: isStudent ? 'Meal Plan Deduction: Lunch' : 'Cafeteria Purchase: Coffee/Snack',
+                    icon: 'fas fa-utensils',
+                    color: 'orange',
+                    baseMinutesAgo: 45 + (seed % 10),
+                    type: 'BASE'
+                },
+                {
+                    system: isStudent ? 'Financial' : 'Payroll', 
+                    description: isStudent ? 'Tuition Balance Check' : 'Submitted monthly timecard',
+                    icon: 'fas fa-peso-sign',
+                    color: isStudent && currentActiveUser.balance > 0 ? 'red' : 'green',
+                    baseMinutesAgo: 60 + (seed % 10),
+                    type: 'BASE'
+                },
+                {
+                    system: 'Library', 
+                    description: isStudent ? 'Book Return: "Advanced Algorithms"' : 'Accessed research database (IP Check)',
+                    icon: 'fas fa-landmark',
+                    color: 'purple',
+                    baseMinutesAgo: 90 + (seed % 15),
+                    type: 'BASE'
+                },
+            ];
+
+            if (isStudent) {
+                timelineData.push({
+                    system: 'Security Access',
+                    description: 'Swiped Out: Student Union Building',
+                    icon: 'fas fa-sign-out-alt',
+                    color: 'blue',
+                    baseMinutesAgo: 20 + (seed % 5),
+                    type: 'BASE'
+                });
+                
+                // Dynamic check for Clearance Status
+                if (userId === OVERDUE_ID && currentActiveUser.balance > 0) { 
+                    timelineData.push({
+                        system: 'Financial',
+                        description: '🚫 **ACCESS DENIED:** Failed attempt to register new course (Balance Due)',
+                        icon: 'fas fa-ban',
+                        color: 'red',
+                        baseMinutesAgo: 5 + (seed % 3),
+                        type: 'BASE'
+                    });
+                } else if (currentActiveUser.balance === 0) {
+                     timelineData.push({
+                        system: 'SIS',
+                        description: '✅ **ACCESS GRANTED:** Course registration successful (Balance Cleared)',
+                        icon: 'fas fa-check-circle',
+                        color: 'green',
+                        baseMinutesAgo: 5 + (seed % 3),
+                        type: 'BASE'
+                    });
+                } else if (userId === PARTIAL_PAYMENT_ID && currentActiveUser.balance > 0) {
+                    timelineData.push({
+                        system: 'SIS',
+                        description: '🔶 **ACCESS GRANTED:** Course registration successful (Grace Period Active)',
+                        icon: 'fas fa-check-circle',
+                        color: 'yellow',
+                        baseMinutesAgo: 5 + (seed % 3),
+                        type: 'BASE'
+                    });
+                } else {
+                    timelineData.push({
+                        system: 'SIS',
+                        description: 'Updated Emergency Contact Information',
+                        icon: 'fas fa-user-edit',
+                        color: 'indigo',
+                        baseMinutesAgo: 5 + (seed % 3),
+                        type: 'BASE'
+                    });
+                }
+            } else {
+                timelineData.push({
+                    system: 'Security Access',
+                    description: 'Swiped Out: Faculty Office Block C',
+                    icon: 'fas fa-sign-out-alt',
+                    color: 'blue',
+                    baseMinutesAgo: 30 + (seed % 10),
+                    type: 'BASE'
+                });
+            }
+
+            // --- 2. Combine Base Data with Custom/Real-time Activities ---
+            let combinedData = [...timelineData, ...currentActiveUser.customActivities];
+            
+            // Sort combined activities (0 minutes ago first, then ascending baseMinutesAgo)
+            combinedData.sort((a, b) => a.baseMinutesAgo - b.baseMinutesAgo);
+
+            // --- 3. Render HTML ---
+            let html = '';
+            combinedData.forEach(item => {
+                const minutesAgo = item.baseMinutesAgo;
+                let timeText;
+                let timeStyle = 'text-slate-400';
+                
+                if (minutesAgo === 0) {
+                    timeText = `JUST NOW`;
+                    timeStyle = `text-${item.color}-300 font-bold`;
+                } else if (minutesAgo < 60) {
+                    timeText = `${minutesAgo} minutes ago`;
+                } else {
+                    const hours = Math.floor(minutesAgo / 60);
+                    const remainingMinutes = minutesAgo % 60;
+                    if (remainingMinutes === 0) {
+                        timeText = `${hours} hours ago`;
+                    } else {
+                        timeText = `${hours} hours and ${remainingMinutes} minutes ago`;
+                    }
+                }
+                
+                html += `
+                    <li class="activity-item ${item.color} p-2 hover:bg-slate-700 rounded-md transition duration-150">
+                        <div class="flex-shrink-0 text-lg mr-3 text-${item.color}-400">
+                            <i class="${item.icon}"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-sm text-white">${item.description}</p>
+                            <p class="text-xs ${timeStyle}">
+                                <span class="font-bold uppercase text-${item.color}-300">${item.system}</span> System - ${timeText}
+                            </p>
+                        </div>
+                    </li>
+                `;
+            });
+
+            const activityList = document.getElementById('activity-list');
+            const timelinePlaceholder = document.getElementById('timeline-placeholder');
+            const timelineIdDisplay = document.getElementById('timeline-id-display');
+            
+            activityList.innerHTML = html;
+            timelinePlaceholder.classList.add('hidden');
+            timelineIdDisplay.textContent = userId;
+            
+            // Scroll to top to see new 'JUST NOW' transactions
+            document.getElementById('activity-list-container').scrollTop = 0;
+        }
+
+        // Simulates the lookup/flash effect for the main panel
+        function flashPanel(isSuccess) {
+            const panel = document.getElementById('lookup-panel');
+            const flashClass = isSuccess ? 'flash-border-success' : 'flash-border-error';
+            const originalBorderClass = 'border-slate-700';
+
+            panel.classList.remove('flash-border-success', 'flash-border-error', 'flash-border-nav', 'flash-border-master', originalBorderClass);
+            panel.classList.add(flashClass);
+
+            setTimeout(() => {
+                panel.classList.remove(flashClass);
+                panel.classList.add(originalBorderClass);
+            }, 700);
+        }
+        
+        // Simulates the lookup/flash effect for the main panel (Warning/Partial)
+        function flashPanelWarning() {
+            const panel = document.getElementById('lookup-panel');
+            const flashClass = 'flash-border-warning';
+            const originalBorderClass = 'border-slate-700';
+
+            panel.classList.remove('flash-border-success', 'flash-border-error', 'flash-border-nav', 'flash-border-master', originalBorderClass);
+            panel.classList.add(flashClass);
+
+            setTimeout(() => {
+                panel.classList.remove(flashClass);
+                panel.classList.add(originalBorderClass);
+            }, 700);
+        }
+
+
+        // New function for navigation flash effect on the main panel
+        function flashPanelNavigation() {
+            const panel = document.getElementById('lookup-panel');
+            const flashClass = 'flash-border-nav'; 
+            const originalBorderClass = 'border-slate-700';
+
+            panel.classList.remove('flash-border-success', 'flash-border-error', 'flash-border-nav', 'flash-border-master', 'flash-border-warning', originalBorderClass);
+            panel.classList.add(flashClass);
+
+            setTimeout(() => {
+                panel.classList.remove(flashClass);
+                panel.classList.add(originalBorderClass);
+            }, 700);
+        }
+        
+        // Function to flash individual cards
+        function flashCard(cardId, flashType = 'success') {
+            const card = document.getElementById(cardId);
+            if (!card) return;
+
+            let flashClass;
+            if (flashType === 'success') flashClass = 'flash-border-success';
+            else if (flashType === 'error') flashClass = 'flash-border-error';
+            else if (flashType === 'warning') flashClass = 'flash-border-warning';
+            else if (flashType === 'master') flashClass = 'flash-border-master';
+            else return;
+
+            card.style.transition = 'none'; 
+            card.classList.add(flashClass);
+
+            setTimeout(() => {
+                card.classList.remove(flashClass);
+                card.style.transition = 'all 0.2s';
+            }, 700);
+        }
+
+        // Function to handle system card clicks (simulated navigation)
+        function navigateToSystem(systemName) {
+            const resultElement = document.getElementById('lookup-result');
+            const systemId = systemName.toLowerCase().replace(/\s/g, '-').replace(/[^a-z0-9-]/g, ''); 
+
+            resultElement.className = 'text-slate-400 italic flex-grow text-indigo-400';
+            resultElement.innerHTML = `<i class="fas fa-satellite-dish text-indigo-500 mr-2"></i> **NAVIGATING:** Connecting to the dedicated **${systemName}** management portal...`;
+            
+            document.getElementById('view-portal-button').classList.add('hidden');
+
+            const card = document.getElementById(systemId);
+            if (card) {
+                const flashClass = 'flash-border-nav'; 
+                card.style.transition = 'none';
+                card.classList.add(flashClass);
+
+                setTimeout(() => {
+                    card.classList.remove(flashClass);
+                    card.style.transition = 'all 0.2s';
+                }, 700);
+            }
+
+            flashPanelNavigation();
+        }
+
+        // FUNCTION: Open the simulated portal view modal (Unchanged)
+        function openPortalView() {
+            if (!lastLookupData.userId || !lastLookupData.isSuccess) {
+                console.error("No valid user data to display portal.");
+                return;
+            }
+
+            const modal = document.getElementById('portal-modal');
+            const content = document.getElementById('portal-content');
+            
+            const isStudent = lastLookupData.userId.startsWith('S');
+            const portalType = isStudent ? 'Student Portal' : 'Staff Portal';
+            const portalColor = isStudent ? 'bg-indigo-700' : 'bg-green-700';
+            
+            let statusColor;
+            let statusIcon;
+
+            if (lastLookupData.balance === '₱0.00' || lastLookupData.balance === 'N/A (Staff)') {
+                statusColor = 'text-green-400';
+                statusIcon = 'fas fa-check-circle';
+            } else if (lastLookupData.userId === OVERDUE_ID) {
+                statusColor = 'text-red-400';
+                statusIcon = 'fas fa-exclamation-triangle';
+            } else if (lastLookupData.userId === PARTIAL_PAYMENT_ID) {
+                 statusColor = 'text-yellow-400';
+                 statusIcon = 'fas fa-clock'; // Clock icon for grace period/pending
+            } else {
+                 statusColor = 'text-slate-400';
+                 statusIcon = 'fas fa-info-circle';
+            }
+
+
+            let dynamicContentHtml = '';
+
+            if (isStudent) {
+                dynamicContentHtml = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+                        <!-- Profile Card -->
+                        <div class="md:col-span-1 bg-slate-800 p-6 rounded-lg">
+                            <i class="fas fa-id-badge text-6xl text-indigo-400 mb-4 block"></i>
+                            <h4 class="text-xl font-bold mb-1">${lastLookupData.name}</h4>
+                            <p class="text-slate-400 text-sm">${lastLookupData.role}</p>
+                            <div class="mt-4 pt-4 border-t border-slate-700">
+                                <p class="text-xs text-slate-500">Major:</p>
+                                <p class="font-medium text-slate-300">Computer Science</p>
+                                <p class="text-xs text-slate-500 mt-3">Advisor:</p>
+                                <p class="font-medium text-slate-300">Dr. Helena Vance (E7782)</p>
+                            </div>
+                        </div>
+
+                        <!-- Financial & Access Status -->
+                        <div class="md:col-span-2 space-y-6">
+                            <div class="bg-slate-800 p-6 rounded-lg">
+                                <h4 class="text-xl font-bold text-white mb-3 flex items-center">
+                                    <i class="${statusIcon} ${statusColor} mr-2"></i> Financial & Access Status
+                                </h4>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-slate-400 text-sm">Account Balance:</p>
+                                        <p class="text-2xl font-extrabold ${statusColor}">${lastLookupData.balance}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-400 text-sm">Library Clearance:</p>
+                                        <p class="text-xl font-bold ${statusColor}">
+                                            ${lastLookupData.userId === OVERDUE_ID ? 'BLOCKED' : 'CLEARED'}
+                                        </p>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <p class="text-slate-400 text-sm">Last Transaction:</p>
+                                        <p class="font-medium text-slate-300">${lastLookupData.lastTransaction}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Current Schedule Mockup -->
+                            <div class="bg-slate-800 p-6 rounded-lg">
+                                <h4 class="text-xl font-bold text-white mb-3 flex items-center">
+                                    <i class="fas fa-calendar-alt text-yellow-400 mr-2"></i> Current Course Schedule (Fall 2025)
+                                </h4>
+                                <ul class="space-y-2 text-sm text-slate-300">
+                                    <li class="p-2 bg-slate-700 rounded-md flex justify-between">
+                                        <span class="font-medium">CS 301 - Advanced Algorithms</span>
+                                        <span class="text-xs text-slate-400">MWF 10:00 AM</span>
+                                    </li>
+                                    <li class="p-2 bg-slate-700 rounded-md flex justify-between">
+                                        <span class="font-medium">MATH 412 - Topology</span>
+                                        <span class="text-xs text-slate-400">TTh 1:30 PM</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                 // Staff Portal View
+                 dynamicContentHtml = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+                        <!-- Profile Card -->
+                        <div class="md:col-span-1 bg-slate-800 p-6 rounded-lg">
+                            <i class="fas fa-user-tie text-6xl text-green-400 mb-4 block"></i>
+                            <h4 class="text-xl font-bold mb-1">${lastLookupData.name}</h4>
+                            <p class="text-slate-400 text-sm">${lastLookupData.role}</p>
+                            <div class="mt-4 pt-4 border-t border-slate-700">
+                                <p class="text-xs text-slate-500">Department:</p>
+                                <p class="font-medium text-slate-300">Academic Affairs</p>
+                                <p class="text-xs text-slate-500 mt-3">Employment Type:</p>
+                                <p class="font-medium text-slate-300">Full-Time Faculty</p>
+                            </div>
+                        </div>
+
+                        <!-- Payroll & System Access -->
+                        <div class="md:col-span-2 space-y-6">
+                            <div class="bg-slate-800 p-6 rounded-lg">
+                                <h4 class="text-xl font-bold text-white mb-3 flex items-center">
+                                    <i class="fas fa-lock text-yellow-400 mr-2"></i> Core System Privileges
+                                </h4>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-slate-400 text-sm">SIS Access Level:</p>
+                                        <p class="text-xl font-bold text-green-400">Admin</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-slate-400 text-sm">LMS Role:</p>
+                                        <p class="text-xl font-bold text-green-400">Instructor</p>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <p class="text-slate-400 text-sm">Last System Activity:</p>
+                                        <p class="font-medium text-slate-300">Updated Gradebook (2m ago)</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Last Payroll Transaction -->
+                            <div class="bg-slate-800 p-6 rounded-lg">
+                                <h4 class="text-xl font-bold text-white mb-3 flex items-center">
+                                    <i class="fas fa-hand-holding-dollar text-emerald-400 mr-2"></i> Recent Payroll Activity
+                                </h4>
+                                <p class="text-slate-400 text-sm">Last Transaction:</p>
+                                <p class="font-medium text-slate-300">${lastLookupData.lastTransaction}</p>
+                            </div>
+                        </div>
+                    </div>
+                 `;
+            }
+
+            // Construct Modal HTML
+            content.innerHTML = `
+                <div class="sticky top-0 p-4 portal-header flex justify-between items-center rounded-t-lg">
+                    <h1 class="text-2xl font-extrabold text-white flex items-center">
+                        <i class="fas fa-globe-americas mr-3 text-indigo-400"></i>
+                        ${portalType}: <span class="ml-2 ${portalColor} py-1 px-3 rounded-full text-sm">${lastLookupData.userId}</span>
+                    </h1>
+                    <button onclick="closePortalView()" class="text-white hover:text-red-400 transition">
+                        <i class="fas fa-times text-2xl"></i>
+                    </button>
+                </div>
+                ${dynamicContentHtml}
+                <div class="p-6 text-center text-slate-500 text-sm border-t border-slate-700 mt-6">
+                    Data rendered from SIS v3.1 | Real-time Access Status Check
+                </div>
+            `;
+
+            // Show the modal
+            modal.style.display = 'block';
+        }
+
+        // FUNCTION: Close the simulated portal view modal (Unchanged)
+        function closePortalView() {
+            document.getElementById('portal-modal').style.display = 'none';
+        }
+
+        // FUNCTION: Toggles between the three main cases
+        function singleQuickLookup() {
+            const inputElement = document.getElementById('user-id-input');
+            
+            // Cycle the index (0 -> 1 -> 2 -> 0)
+            quickLookupIndex = (quickLookupIndex + 1) % QUICK_LOOKUP_IDS.length; 
+            
+            inputElement.value = QUICK_LOOKUP_IDS[quickLookupIndex]; 
+            
+            lookupUser();
+        }
+
+        // --- MASTER UPDATE FUNCTION ---
+        function triggerAllSystemUpdate() {
+            const allCards = [
+                'sis-card', 'financial-card', 'lms-card', 'library-card', 
+                'security-card', 'dining-card', 'activity-timeline-card' 
+            ];
+
+            allCards.forEach(cardId => flashCard(cardId, 'master'));
+
+            const randomizer = Math.random();
+            const isMinorError = randomizer < 0.2; 
+
+            const updateStatus = (dotId, textId, newStatusClass, newText, newTextColor) => {
+                const dot = document.getElementById(dotId);
+                const text = document.getElementById(textId);
+
+                dot.className = `status-dot ${newStatusClass}`;
+                text.textContent = newText;
+                text.className = `text-sm font-medium ${newTextColor} flex items-center`;
+            };
+
+            const newStudents = Math.floor(15400 + (randomizer * 50));
+            document.getElementById('sis-enrolled').textContent = newStudents.toLocaleString();
+            if (isMinorError) {
+                updateStatus('sis-status-dot', 'sis-status-text', 'status-syncing', 'Data Conflict', 'text-amber-400');
+                document.getElementById('sis-pending').textContent = '250 Students / 15 Staff (High)';
+            } else {
+                updateStatus('sis-status-dot', 'sis-status-text', 'status-up', 'Operational', 'text-green-400');
+                document.getElementById('sis-pending').textContent = '12 Students / 2 Staff';
+            }
+
+            const currentBalance = isMinorError ? '₱1,200.00 (Sync Issue)' : '₱0.00 (Cleared)';
+            document.getElementById('tuition-balance').textContent = currentBalance;
+            document.getElementById('last-transaction').textContent = `SIS-Financial Sync (${Math.floor(randomizer * 5) + 1}s latency)`;
+            updateStatus('financial-status-dot', 'financial-status-text', isMinorError ? 'status-down' : 'status-up', isMinorError ? 'Error State' : 'Synced', isMinorError ? 'text-red-400' : 'text-green-400');
+
+            document.getElementById('lms-blocks').textContent = Math.floor(1 + (randomizer * 10)) + ' students';
+            document.getElementById('lms-next-sync').textContent = 'Now';
+            updateStatus('lms-status-dot', 'lms-status-text', 'status-up', 'Online', 'text-green-400');
+
+            document.getElementById('library-blocked').textContent = Math.floor(100 + (randomizer * 50)) + ' due to fines';
+            document.getElementById('library-latency').textContent = (Math.floor(randomizer * 10) + 40) + 'ms';
+            updateStatus('library-status-dot', 'library-status-text', 'status-up', 'Online', 'text-green-400');
+
+            document.getElementById('security-active').textContent = newStudents.toLocaleString();
+            document.getElementById('security-last-sync').textContent = 'Real-time (Verified)';
+            updateStatus('security-status-dot', 'security-status-text', 'status-up', 'Locked Down', 'text-green-400');
+
+            document.getElementById('dining-transactions').textContent = Math.floor(3000 + (randomizer * 200)).toLocaleString();
+            document.getElementById('dining-api').textContent = isMinorError ? '98% success (2 fails)' : '100% success';
+            updateStatus('dining-status-dot', 'dining-status-text', 'status-up', 'Active', 'text-green-400');
+            
+            document.getElementById('warehouse-records').textContent = '9.8 Million (Verified)';
+            document.getElementById('warehouse-reports').textContent = Math.floor(80 + (randomizer * 10));
+            
+            document.getElementById('activity-list').innerHTML = '';
+            document.getElementById('timeline-placeholder').classList.remove('hidden');
+            document.getElementById('timeline-id-display').textContent = 'Campus-Wide Sync Complete';
+            
+            const resultElement = document.getElementById('lookup-result');
+            resultElement.className = 'text-slate-400 italic flex-grow text-blue-400';
+            resultElement.innerHTML = `<i class="fas fa-check-double text-blue-500 mr-2"></i> **MASTER SYNC COMPLETE:** Updated ${allCards.length} systems. ${isMinorError ? 'There is a minor issue with Billing, check the card.' : 'All systems are operational.'}`;
+            
+            flashPanelNavigation(); 
+            updateTime();
+        }
+        // --- END MASTER UPDATE FUNCTION ---
+
+        // Main lookup function
+        function lookupUser(readInput = true) {
+            const inputElement = document.getElementById('user-id-input');
+            const resultElement = document.getElementById('lookup-result');
+            const portalButton = document.getElementById('view-portal-button');
+            const currentUserDisplay = document.getElementById('current-user-display');
+            
+            let userId;
+            
+            if (readInput) {
+                userId = inputElement.value.toUpperCase().trim();
+                // Clear custom activities on new lookup
+                currentActiveUser.customActivities = []; 
+            } else {
+                // Use existing userId if not reading input (e.g., after payment)
+                userId = currentActiveUser.userId;
+            }
+            
+            const defaultClasses = 'mt-1 block w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition duration-300';
+            const errorClasses = 'input-error-style mt-1 block w-full px-3 py-2 bg-slate-900 border-2 rounded-md focus:outline-none shadow-lg transition duration-300';
+            const warningClasses = 'input-warning-style mt-1 block w-full px-3 py-2 bg-slate-900 border-2 rounded-md focus:outline-none shadow-lg transition duration-300';
+
+
+            const activityList = document.getElementById('activity-list');
+            const timelinePlaceholder = document.getElementById('timeline-placeholder');
+            const timelineIdDisplay = document.getElementById('timeline-id-display');
+            const diningSaleButton = document.getElementById('dining-sale-button');
+            const diningFeedback = document.getElementById('dining-feedback');
+
+            portalButton.classList.add('hidden');
+            activityList.innerHTML = ''; 
+            timelineIdDisplay.textContent = 'Loading...';
+
+            if (!userId) {
+                resultElement.className = 'text-slate-400 italic flex-grow text-red-400';
+                resultElement.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500 mr-2"></i> <span>Please enter a user ID.</span>';
+                flashPanel(false);
+                lastLookupData = {};
+                inputElement.className = defaultClasses;
+                timelinePlaceholder.classList.remove('hidden');
+                timelineIdDisplay.textContent = 'No User Selected';
+                
+                currentActiveUser.userId = null;
+                currentActiveUser.isStudent = false;
+                checkPayBillButtonState();
+                diningSaleButton.disabled = true;
+                diningFeedback.textContent = "Load a user to enable transaction.";
+                return;
+            }
+
+            const uniqueTransaction = generateUniqueTransaction(userId);
+
+            let name, role, statusMessage, isSuccess;
+            let initialBalance = '₱0.00'; 
+            let transactionText = 'System Initialized'; 
+            let isStudent = false;
+            let isOverdue = false; // Overdue student (critical access block)
+            let isPartial = false; // Partial payment student (non-critical, grace period)
+            
+            // --- SIMULATED SIS LOOKUP LOGIC ---
+            if (userId.startsWith('S') && userId.length > 3) {
+                isStudent = true;
+                isSuccess = true;
+
+                // Default cleared student
+                name = `Alex R. (ID ${userId.slice(1)})`; 
+                role = 'Student (Full-Time)';
+                initialBalance = '₱0.00'; 
+                transactionText = `${uniqueTransaction.text} - ${uniqueTransaction.amount}`; 
+                statusMessage = `✅ **CLEARED.** Enrollment: Active. Billing: Paid. Access: Full. LMS: Granted. Welcome, ${name}!`;
+
+                if (userId === OVERDUE_ID) {
+                    name = `Chris M. (ID ${userId.slice(1)})`;
+                    statusMessage = `⚠️ **LIMITED ACCESS.** Enrollment: Active. Billing: **Overdue**. Library/Security: Temporary Block.`;
+                    initialBalance = '₱28,500.00'; // Overdue Tuition
+                    transactionText = `Tuition Fee Applied (${uniqueTransaction.amount} fee added)`;
+                    isOverdue = true;
+                } else if (userId === PARTIAL_PAYMENT_ID) {
+                    name = `Jordan L. (ID ${userId.slice(1)})`;
+                    // Updated Balance to ₱25,000.00 as requested
+                    initialBalance = '₱25,000.00'; 
+                    statusMessage = `🔶 **BALANCE DUE.** Enrollment: Active. Billing: **Partial Payment Posted**. Access: Full (Grace Period).`;
+                    // Assuming a ₱60,000 initial tuition, this means a ₱35,000 payment was made.
+                    transactionText = `Payment Posted: ₱35,000.00 (Partial Payment)`; 
+                    isPartial = true;
+                }
+            } else if (userId.startsWith('E') && userId.length > 3) {
+                name = `Dr. Jane S. (ID ${userId.slice(1)})`;
+                role = 'Employee (Faculty)';
+                statusMessage = `✅ **EMPLOYEE CLEARED.** Payroll: Active. Access: Full. SIS Role: Administrator. Hello, ${name}!`;
+                initialBalance = 'N/A (Staff)';
+                transactionText = `Time Clock Log-in (${uniqueTransaction.amount} credited)`; 
+                isSuccess = true;
+            } else {
+                name = 'Guest';
+                role = 'Unknown/Inactive';
+                statusMessage = `<i class="fas fa-times-circle text-red-500 mr-2"></i> **ID NOT FOUND.** Access denied by Security & SIS. Check ID or contact IT.`;
+                isSuccess = false;
+                initialBalance = 'N/A';
+                transactionText = 'SIS/Auth Error';
+                lastLookupData = {};
+            }
+            // --- END SIMULATED SIS LOOKUP LOGIC ---
+            
+            // Set initial mutable state for the current lookup
+            currentActiveUser.userId = userId;
+            currentActiveUser.isStudent = isStudent;
+            
+            // Parse the balance to a number for calculations
+            if (isStudent && initialBalance.includes('₱')) {
+                // Ensure correct parsing for numbers with commas (like 25,000.00)
+                currentActiveUser.balance = parseFloat(initialBalance.replace('₱', '').replace(/,/g, ''));
+            } else {
+                currentActiveUser.balance = 0.00;
+            }
+            
+            // Update initial balance in lastLookupData using the *current* state of currentActiveUser.balance
+            lastLookupData = { 
+                userId, name, role, statusMessage, isSuccess, 
+                balance: `₱${currentActiveUser.balance.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`, 
+                lastTransaction: transactionText 
+            };
+
+            // --- INPUT FIELD STYLING LOGIC ---
+            inputElement.classList.remove('input-error-style', 'input-warning-style');
+            inputElement.className = defaultClasses; // Resetting to default first
+
+            if (isOverdue) {
+                inputElement.classList.add('input-error-style');
+            } else if (isPartial) {
+                inputElement.classList.add('input-warning-style');
+            }
+            // --- END INPUT FIELD STYLING ---
+
+
+            // Update UI
+            if (isSuccess) {
+                resultElement.className = 'text-slate-400 italic flex-grow';
+                currentUserDisplay.textContent = `${name} (${role})`;
+                portalButton.classList.remove('hidden');
+
+                const balanceElement = document.getElementById('tuition-balance');
+                const transactionElement = document.getElementById('last-transaction');
+                
+                balanceElement.classList.remove('text-emerald-300', 'text-red-400', 'text-yellow-400', 'text-slate-400');
+                balanceElement.textContent = lastLookupData.balance; // Use the formatted balance from lastLookupData
+                transactionElement.textContent = transactionText;
+                
+                if (currentActiveUser.balance === 0.00 || !isStudent) { 
+                    balanceElement.classList.add('text-emerald-300');
+                } else if (isOverdue) { 
+                    balanceElement.classList.add('text-red-400'); 
+                } else if (isPartial) { 
+                    balanceElement.classList.add('text-yellow-400'); 
+                } else {
+                    balanceElement.classList.add('text-slate-400');
+                }
+
+                // Update Activity Timeline
+                updateTimeline(userId, isStudent);
+
+                // Update the Pay Bill Button State and Dining button state
+                checkPayBillButtonState();
+                diningSaleButton.disabled = !isStudent;
+                diningFeedback.textContent = isStudent ? `Current User: ${userId}` : "Staff accounts do not incur dining charges.";
+                
+                if (isOverdue) {
+                     flashCard('financial-card', 'error'); 
+                     flashCard('activity-timeline-card', 'error');
+                     flashPanel(false); // Red flash
+                } else if (isPartial) {
+                     flashCard('financial-card', 'warning'); 
+                     flashCard('activity-timeline-card', 'warning');
+                     flashPanelWarning(); // Yellow flash
+                } else {
+                    flashCard('financial-card', 'success');
+                    flashCard('activity-timeline-card', 'success');
+                    flashPanel(true); // Green flash
+                }
+                
+            } else {
+                // Handle SIS lookup failure
+                resultElement.className = 'text-slate-400 italic flex-grow text-red-400';
+                currentUserDisplay.textContent = `Administrator (SIS/Billing)`; 
+                document.getElementById('tuition-balance').textContent = 'N/A';
+                document.getElementById('last-transaction').textContent = 'SIS Error';
+                
+                activityList.innerHTML = '';
+                timelinePlaceholder.classList.remove('hidden');
+                timelineIdDisplay.textContent = 'Lookup Failed';
+                
+                currentActiveUser.userId = null;
+                currentActiveUser.isStudent = false;
+                checkPayBillButtonState();
+                diningSaleButton.disabled = true;
+                diningFeedback.textContent = "Load a user to enable transaction.";
+                flashPanel(false);
+            }
+            
+            resultElement.innerHTML = statusMessage;
+        }
+
+        // Initialize
+        window.onload = function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            document.getElementById('lookup-button').addEventListener('click', () => lookupUser(true));
+            document.getElementById('user-id-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    lookupUser(true);
+                }
+            });
+            
+            document.getElementById('activity-list').innerHTML = '';
+            document.getElementById('timeline-placeholder').classList.remove('hidden');
+            document.getElementById('timeline-id-display').textContent = 'No User Selected';
+        };
+    </script>
+
+</body>
+</html>
